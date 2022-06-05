@@ -2,11 +2,15 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Xml;
+using System;
 
 public class MapManager : MonoBehaviour
 {
     public List<GameObject> items = new List<GameObject>();
+    public QRGenerator qRGenerator;
+
     private Logger logger;
+    private XmlDocument storedDocument;
 
     void Start()
     {
@@ -28,53 +32,76 @@ public class MapManager : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.C))
         {
-            Clear();
+            ClearItemsList();
         }
     }
 
     public void Save()
     {
-        items.Clear();
-        items.AddRange(GameObject.FindGameObjectsWithTag("Ground"));
-
-        XmlDocument document = new XmlDocument();
-        XmlElement root = document.CreateElement("Map");
-        root.SetAttribute("Map_Name", "File_Name");
-
-        foreach (GameObject item in items)
+        try
         {
-            SpriteRenderer sr = item.gameObject.GetComponent<SpriteRenderer>();
+            items.Clear();
+            items.AddRange(GameObject.FindGameObjectsWithTag("Ground"));
 
-            XmlElement element = document.CreateElement("ground");
-            element.SetAttribute("name", item.name.Replace("(Clone)", ""));
-            element.SetAttribute("x", item.transform.position.x.ToString());
-            element.SetAttribute("y", item.transform.position.y.ToString());
-            element.SetAttribute("so", sr.sortingOrder.ToString());
-            element.SetAttribute("fx", sr.flipX ? "1" : "0");
-            element.SetAttribute("fy", sr.flipY ? "1" : "0");
+            storedDocument = new XmlDocument();
+            XmlElement root = storedDocument.CreateElement("Map");
+            root.SetAttribute("Map_Name", "File_Name");
 
-            root.AppendChild(element);
+            foreach (GameObject item in items)
+            {
+                SpriteRenderer sr = item.gameObject.GetComponent<SpriteRenderer>();
+
+                XmlElement element = storedDocument.CreateElement("Ground");
+                string name = item.name.Replace("(Clone)", "");
+                name = $"{name[0]}{name[1]}{name[2]}";
+
+                element.SetAttribute("name", name);
+                element.SetAttribute("x", item.transform.position.x.ToString());
+                element.SetAttribute("y", item.transform.position.y.ToString());
+                element.SetAttribute("so", sr.sortingOrder.ToString());
+                element.SetAttribute("fx", sr.flipX ? "1" : "0");
+                element.SetAttribute("fy", sr.flipY ? "1" : "0");
+
+                root.AppendChild(element);
+            }
+
+            storedDocument.AppendChild(root);
+            storedDocument.Save($"{Application.dataPath}/Map.xml");
+
+            Encoder encoder = new Encoder();
+            qRGenerator.EncodeTextToQR(encoder.XMLToString(storedDocument));
+            qRGenerator.SetQRVisibility(true);
+
+            logger.LogMessage("File saved successfully to: " + $"{Application.dataPath}/Map.xml", LogType.Warning);
         }
-
-        document.AppendChild(root);
-        document.Save($"{Application.dataPath}/Map.xml");
-
-        logger.LogMessage("File saved successfully to: " + $"{Application.dataPath}/Map.xml", LogType.Warning);
+        catch (Exception ex)
+        {
+            throw new Exception(ex.Message);
+        }
     }
 
-    public void Load()
+    public void Load(XmlDocument document = null)
     {
 
+        qRGenerator.SetQRVisibility(false);
         items.Clear();
 
-        XmlDocument document = new XmlDocument();
-        document.Load($"{Application.dataPath}/Map.xml");
+        XmlNodeList nodes;
 
-        XmlNodeList nodes = document.GetElementsByTagName("ground");
+        if (document != null)
+        {
+            nodes = document.GetElementsByTagName("ground");
+        }
+        else
+        {
+            storedDocument = new XmlDocument();
+            storedDocument.Load($"{Application.dataPath}/Map.xml");
+
+            nodes = storedDocument.GetElementsByTagName("Ground");
+        }
 
         foreach (XmlNode node in nodes)
         {
-            var pippo = node.Attributes["name"].Value;
             var prefab = Resources.Load($"Prefabs/{node.Attributes["name"].Value}") as GameObject;
 
             Vector3 position = new Vector3(float.Parse(node.Attributes["x"].Value),
@@ -92,7 +119,9 @@ public class MapManager : MonoBehaviour
         }
     }
 
-    public void Clear()
+
+
+    public void ClearItemsList()
     {
 
         List<GameObject> list = new List<GameObject>();
