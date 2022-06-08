@@ -12,12 +12,11 @@ public class MapManager : MonoBehaviour
     private Logger logger;
     private XmlDocument storedDocument;
 
+    #region  Unity
     void Start()
     {
         logger = new Logger();
     }
-
-
     public void Update()
     {
         if (Input.GetKeyDown(KeyCode.S))
@@ -35,7 +34,9 @@ public class MapManager : MonoBehaviour
             ClearItemsList();
         }
     }
+    #endregion
 
+    #region  IO methods
     public void Save()
     {
         try
@@ -79,10 +80,8 @@ public class MapManager : MonoBehaviour
             throw new Exception(ex.Message);
         }
     }
-
     public void Load(XmlDocument document = null)
     {
-
         qRGenerator.SetQRVisibility(false);
         items.Clear();
 
@@ -118,6 +117,14 @@ public class MapManager : MonoBehaviour
             items.Add(prefab);
         }
     }
+    #endregion
+
+    #region  Gameplay
+    void Connect(Transform pointA, Transform pointB)
+    {
+
+    }
+    #endregion
 
 
 
